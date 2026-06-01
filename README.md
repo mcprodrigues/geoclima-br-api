@@ -1,98 +1,266 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# GeoClima BR
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+API REST em **NestJS** que agrega **dados climáticos** (Open-Meteo) e **dados geográficos**
+(IBGE via BrasilAPI) de cidades brasileiras. O usuário informa apenas o nome da cidade e a
+aplicação resolve dinamicamente coordenadas, estado e previsão do tempo — sem coordenadas
+fixas no código.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+> Trabalho acadêmico da disciplina de Técnicas de Integração de Sistemas (N703).
 
-## Description
+---
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## Sumário
 
-## Project setup
+- [Arquitetura](#arquitetura)
+- [Stack](#stack)
+- [Pré-requisitos](#pré-requisitos)
+- [Instalação](#instalação)
+- [Execução](#execução)
+- [Testes](#testes)
+- [Rotas](#rotas)
+- [APIs externas](#apis-externas)
+- [Estrutura do repositório](#estrutura-do-repositório)
 
-```bash
-$ npm install
-```
+---
 
-## Compile and run the project
+## Arquitetura
 
-```bash
-# development
-$ npm run start
+O projeto segue um padrão **modular com ports & adapters** (hexagonal), um módulo por
+feature (`clima`, `cidades`, `ping`) mais `health`:
 
-# watch mode
-$ npm run start:dev
+- **Ports** (`interfaces/*.port.ts`): contratos das dependências externas, expostos via
+  tokens de injeção (`Symbol.for(...)`).
+- **Use-cases** (`use-cases/*.use-case.ts`): regra de aplicação isolada, sem acoplamento ao
+  framework HTTP. Validam a entrada, orquestram as ports e montam a resposta.
+- **Adapters** (ex.: `open-meteo-geocoding.adapter.ts`, `brasil-api-municipios.adapter.ts`):
+  implementam as ports traduzindo as APIs externas para o domínio (anti-corruption layer).
+- **Service**: implementa a interface de serviço do módulo e delega aos use-cases.
+- **Controller**: adapter de entrada HTTP; converte erros de domínio em respostas via um
+  `handleError` privado.
+- **Erros compartilhados** (`src/shared/errors`): `AppError` (base, com `statusCode`),
+  `NotFoundError` (404) e `ServiceUnavailableError` (503).
 
-# production mode
-$ npm run start:prod
-```
+Fluxo de erro: use-cases/adapters lançam `AppError` (ou subclasses); o controller mapeia
+para a `HttpException` correspondente do NestJS. Erros inesperados viram `500` sem vazar
+stack para o cliente.
 
-## Run tests
+---
 
-```bash
-# unit tests
-$ npm run test
+## Stack
 
-# e2e tests
-$ npm run test:e2e
+- **NestJS 11** (Node 20+) — `@nestjs/common`, `@nestjs/core`, `@nestjs/platform-express`
+- **@nestjs/axios** (HttpModule) — chamadas HTTP às APIs externas
+- **@nestjs/terminus** — health check
+- **@nestjs/swagger** — documentação OpenAPI em `/api/docs`
+- **class-validator / class-transformer** — `ValidationPipe`
+- **Jest** — testes unitários
 
-# test coverage
-$ npm run test:cov
-```
+---
 
-## Deployment
+## Pré-requisitos
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+- **Node.js 20+** e npm.
 
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+node -v   # deve ser 20.x ou superior
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+> Usando `nvm`: `nvm use 20`.
 
-## Resources
+---
 
-Check out a few resources that may come in handy when working with NestJS:
+## Instalação
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+```bash
+npm install
+```
 
-## Support
+---
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+## Execução
 
-## Stay in touch
+A aplicação sobe na **porta 3000** por padrão (configurável via variável `PORT`).
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+```bash
+# desenvolvimento (watch)
+npm run start:dev
 
-## License
+# produção
+npm run build
+npm run start:prod
+```
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+- API: `http://localhost:3000`
+- Documentação Swagger: `http://localhost:3000/api/docs`
+
+> Para usar outra porta: `PORT=3100 npm run start:prod`.
+
+---
+
+## Testes
+
+```bash
+npm test            # roda toda a suíte (Jest)
+npm run test:watch  # modo watch
+npm run test:cov    # com cobertura
+```
+
+Os testes são unitários e co-locados em `src/modules/<feature>/tests/`, mockando as ports
+via `Test.createTestingModule` (não dependem de rede).
+
+---
+
+## Rotas
+
+Base: `http://localhost:3000`. As rotas de domínio ficam sob o prefixo **`/api/v1`**;
+`/` e `/ping` ficam na raiz.
+
+| Método | Rota                          | Descrição                             |
+|--------|-------------------------------|---------------------------------------|
+| GET    | `/`                           | Mensagem de boas-vindas               |
+| GET    | `/ping`                       | Liveness — retorna `pong!`            |
+| GET    | `/api/v1/health`              | Health check (Terminus)               |
+| GET    | `/api/v1/clima/{nome_cidade}` | Clima atual de uma cidade brasileira  |
+| GET    | `/api/v1/cidades/{sigla_uf}`  | Municípios de uma UF (`?limite=10`)   |
+
+### `GET /`
+
+```
+GeoClima BR (N703) — agregação de dados climáticos e geográficos do Brasil. Documentação em /api/docs.
+```
+
+### `GET /ping`
+
+```
+pong!
+```
+
+### `GET /api/v1/health`
+
+Health check via Terminus, verificando BrasilAPI e Open-Meteo. **200** quando saudável:
+
+```json
+{
+  "status": "ok",
+  "info": {
+    "brasil-api": { "status": "up" },
+    "open-meteo": { "status": "up" }
+  },
+  "error": {},
+  "details": {
+    "brasil-api": { "status": "up" },
+    "open-meteo": { "status": "up" }
+  }
+}
+```
+
+Se alguma dependência estiver fora, retorna **503** com o serviço em `error`.
+
+### `GET /api/v1/clima/{nome_cidade}`
+
+Resolve as coordenadas pelo nome (geocoding) e retorna a previsão do dia.
+
+**200** — `GET /api/v1/clima/Fortaleza`:
+
+```json
+{
+  "nome": "Fortaleza",
+  "estado": "CE",
+  "clima": {
+    "temperatura_min": 24,
+    "temperatura_max": 32,
+    "condicao": "Parcialmente nublado",
+    "unidades": { "temperatura": "°C" }
+  },
+  "consultado_em": "2025-03-15T14:30:00.000Z"
+}
+```
+
+Erros:
+
+| HTTP | Quando                                              |
+|------|-----------------------------------------------------|
+| 400  | nome da cidade com menos de 2 caracteres            |
+| 404  | nenhuma cidade brasileira encontrada para o nome    |
+| 503  | falha/timeout na chamada ao Open-Meteo              |
+
+### `GET /api/v1/cidades/{sigla_uf}?limite=10`
+
+Lista municípios da UF. `limite` é opcional (padrão **10**, restringido ao intervalo 1–100).
+
+**200** — `GET /api/v1/cidades/CE?limite=5`:
+
+```json
+{
+  "uf": "CE",
+  "quantidade_retornada": 5,
+  "cidades": [{ "nome": "Abaiara" }, { "nome": "Acarape" }],
+  "consultado_em": "2025-03-15T14:30:00.000Z"
+}
+```
+
+Erros:
+
+| HTTP | Quando                                  |
+|------|-----------------------------------------|
+| 400  | sigla da UF sem exatamente 2 letras     |
+| 404  | UF inexistente                          |
+| 503  | falha/timeout na chamada à BrasilAPI    |
+
+### Formato de erro
+
+Os erros seguem o formato padrão do NestJS, por exemplo:
+
+```json
+{ "statusCode": 404, "message": "Nenhuma cidade encontrada com o nome informado", "error": "Not Found" }
+```
+
+---
+
+## APIs externas
+
+- **BrasilAPI / IBGE** — municípios por UF
+  `https://brasilapi.com.br/api/ibge/municipios/v1/{UF}`
+- **Open-Meteo Geocoding** — resolve nome → coordenadas + estado
+  `https://geocoding-api.open-meteo.com/v1/search`
+- **Open-Meteo Forecast** — previsão do dia por coordenada
+  `https://api.open-meteo.com/v1/forecast`
+
+Créditos: [BrasilAPI](https://brasilapi.com.br) e [Open-Meteo](https://open-meteo.com)
+(dados climáticos gratuitos sob licença aberta).
+
+---
+
+## Estrutura do repositório
+
+```
+src/
+├── main.ts                      # bootstrap (prefixo, CORS, validação, Swagger)
+├── app.module.ts
+├── app.controller.ts            # GET /  (mensagem)
+├── app.service.ts
+├── shared/
+│   └── errors/                  # AppError, NotFoundError, ServiceUnavailableError
+├── health/                      # health check (Terminus)
+└── modules/
+    ├── ping/                    # GET /ping
+    ├── clima/                   # consulta de clima (Open-Meteo)
+    │   ├── interfaces/          # ports (geocoding, forecast, service)
+    │   ├── use-cases/           # consultar-clima.use-case
+    │   ├── value-objects/       # nome-cidade.vo
+    │   ├── dto/                 # clima.response.dto
+    │   ├── *.adapter.ts         # adapters Open-Meteo
+    │   └── tests/
+    └── cidades/                 # municípios por UF (BrasilAPI)
+        ├── interfaces/          # ports (municipios, service)
+        ├── use-cases/           # listar-cidades.use-case
+        ├── value-objects/       # sigla-uf.vo
+        ├── dto/                 # cidades.response.dto
+        ├── *.adapter.ts         # adapter BrasilAPI
+        └── tests/
+
+docs/
+└── postman_collection.json      # coleção Postman (schema v2.1)
+```
+
+
