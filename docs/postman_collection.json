@@ -1,0 +1,148 @@
+{
+  "info": {
+    "name": "GeoClima BR (N703)",
+    "description": "Coleção de testes da GeoClima BR — API de agregação de dados climáticos e geográficos do Brasil (N703). Use a variável {{base_url}} (padrão http://localhost:3000).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3000",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Root - mensagem",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/",
+          "host": ["{{base_url}}"],
+          "path": [""]
+        },
+        "description": "Mensagem de boas-vindas na raiz (sem prefixo)."
+      },
+      "response": []
+    },
+    {
+      "name": "Ping",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/ping",
+          "host": ["{{base_url}}"],
+          "path": ["ping"]
+        },
+        "description": "Verifica se a API está respondendo. Retorna \"pong!\"."
+      },
+      "response": []
+    },
+    {
+      "name": "Health",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/v1/health",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "health"]
+        },
+        "description": "Health check da aplicação e das integrações externas (BrasilAPI e Open-Meteo)."
+      },
+      "response": []
+    },
+    {
+      "name": "Clima - Fortaleza (200)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/v1/clima/Fortaleza",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "clima", "Fortaleza"]
+        },
+        "description": "Consulta de clima por nome de cidade (caso de sucesso)."
+      },
+      "response": []
+    },
+    {
+      "name": "Clima - cidade inexistente (404)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/v1/clima/Xpto123zzz",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "clima", "Xpto123zzz"]
+        },
+        "description": "Cidade brasileira não encontrada no geocoding → 404."
+      },
+      "response": []
+    },
+    {
+      "name": "Clima - nome inválido (400)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/v1/clima/A",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "clima", "A"]
+        },
+        "description": "Nome da cidade com menos de 2 caracteres → 400."
+      },
+      "response": []
+    },
+    {
+      "name": "Cidades - CE limite=5 (200)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/v1/cidades/CE?limite=5",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "cidades", "CE"],
+          "query": [
+            {
+              "key": "limite",
+              "value": "5"
+            }
+          ]
+        },
+        "description": "Lista municípios de uma UF respeitando o limite (caso de sucesso)."
+      },
+      "response": []
+    },
+    {
+      "name": "Cidades - UF inexistente (404)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/v1/cidades/XX",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "cidades", "XX"]
+        },
+        "description": "UF com 2 letras mas inexistente → 404."
+      },
+      "response": []
+    },
+    {
+      "name": "Cidades - sigla inválida (400)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/v1/cidades/ceara",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "cidades", "ceara"]
+        },
+        "description": "Sigla de UF que não tem exatamente 2 letras → 400."
+      },
+      "response": []
+    }
+  ]
+}
